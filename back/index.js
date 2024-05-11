@@ -33,13 +33,18 @@ app.use(
 );
 
 mongoose
-  .connect('mongodb+srv://upwriterusers31301:makhtar786@upwriter.lyqkila.mongodb.net/Upwriter?retryWrites=true&w=majority&appName=upwriter')
+  .connect(process.env.DATABASE)
   .then(() => {
     console.log("Connected!");
   })
   .catch((error) => {
     console.log(error);
   });
+
+  app.get("/", (req, res) => {
+    res.send("Hello, World!");
+  });
+  
 
 app.post("/api/signup", async (req, res) => {
   try {
@@ -128,20 +133,27 @@ app.post("/credits", async (req, res) => {
   try {
     const { userId, credits, creditsAmount, creditstransactionId } = req.body;
 
-    // Update the user document with credits information
+    // Fetch the user document to get the current credits
+    const user = await usersModel.findById(userId);
+
+    // Calculate the new total credits amount by summing the current credits with the new credits
+    const newCredits = user.credits + parseInt(credits);
+
+    // Update the user document with the new credits information
     await usersModel.findByIdAndUpdate(userId, {
       creditsAmount,
-      credits,
+      credits: newCredits,
       creditstransactionId,
     });
-    res
-      .status(201)
-      .json({ message: "Credits added successfully", credits: credits });
+
+    res.status(201).json({ message: "Credits added successfully", credits: credits });
   } catch (error) {
     console.error("Error adding credits:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
 
 // Add a new route to fetch user information
 app.get("/user/:userId", async (req, res) => {
@@ -279,10 +291,12 @@ app.post("/api/autoapplycriteria", async (req, res) => {
       alreadyHired,
       alreadyInvites,
       alreadyInterviewing,
+      connects,
     } = req.body;
 
+    console.log(req.body)
     // Update the user document with auto apply criteria
-    const updatedUser = await usersModel.findByIdAndUpdate(
+    await usersModel.findByIdAndUpdate(
       userId,
       {
         submittedProposal,
@@ -295,13 +309,13 @@ app.post("/api/autoapplycriteria", async (req, res) => {
         alreadyHired,
         alreadyInvites,
         alreadyInterviewing,
+        connects,
       },
       { new: true } // Return the updated user document
     );
 
     res.status(201).json({
-      message: "Auto apply criteria saved successfully",
-      user: updatedUser, // Send back the updated user document to the client
+      message: "Auto apply criteria saved successfully" // Send back the updated user document to the client
     });
   } catch (error) {
     console.error("Error saving auto apply criteria:", error);
@@ -309,7 +323,36 @@ app.post("/api/autoapplycriteria", async (req, res) => {
   }
 });
 
+app.get("/api/autoapplycriteria/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await usersModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    // Extract and send back auto apply criteria data from the user document
+    const autoApplyCriteria = {
+      submittedProposal: user.submittedProposal,
+      clientTotalSpent: user.clientTotalSpent,
+      clientRating: user.clientRating,
+      clientLocation: user.clientLocation,
+      clientBudget: user.clientBudget,
+      clientHireRate: user.clientHireRate,
+      matchingSkills: user.matchingSkills,
+      alreadyHired: user.alreadyHired,
+      alreadyInvites: user.alreadyInvites,
+      alreadyInterviewing: user.alreadyInterviewing,
+      connects:user.connects
+    };
+    res.status(200).json(autoApplyCriteria);
+  } catch (error) {
+    console.error("Error fetching auto apply criteria:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
-app.listen(3000, () => {
+
+
+app.listen(8000, () => {
   console.log(`port connected`);
 });

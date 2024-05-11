@@ -134,12 +134,16 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  connects:{
+    type: Number,
+    default: 0,
+  },
   // New field for job application history
   jobApplications: [jobApplicationSchema],
 });
 
 userSchema.methods.generateAuthToken = function () {
-  const token = jwt.sign({ _id: this._id },'Akhtar1122', {
+  const token = jwt.sign({ _id: this._id }, process.env.JWTPRIVATEKEY, {
     expiresIn: "7d",
   });
   return token;
